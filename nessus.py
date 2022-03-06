@@ -117,6 +117,5 @@ if __name__ == '__main__':
         data = data_frame.to_dict(orient = "records")
         index = "nessus_{}".format(scan["name"].replace(" ", "_").lower())
         resp = elk.set_datatypes(index)
-        print(resp)
         for row in data:
             response = elk.insert_document(row, index)
