@@ -1,5 +1,4 @@
 from secrets import secrets
-import json
 import simplejson
 import requests
 import hashlib
