@@ -51,6 +51,10 @@ class Nessus:
         scan_details = self.get_scan_details(id)
         return scan_details["history"]
 
+    def last_modification_date(self, id):
+        scan_details = self.get_scan_details(id)
+        return scan_details["history"][0]["last_modification_date"]
+
     def get_notes(self, id):
         scan_details = self.get_scan_details(id)
         return scan_details["notes"]
