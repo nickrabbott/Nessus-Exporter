@@ -18,6 +18,13 @@ class Exporter:
         self.indexes = []
         self.index_history = {}
         self.polling_interval = 43200 # default value 1 day, overriden by config.ini
+        self.config = configparser.ConfigParser()
+        self.config.read("../config/config.ini")
+        self.config.sections()
+        self.nessus_url = self.construct_url(self.config["NESSUS"]["Protocol"],self.config["NESSUS"]["IP"],self.config["NESSUS"]["Port"])
+        self.nessus_access_key = self.config["NESSUS"]["Access_Key"]
+        self.nessus_secret_key = self.config["NESSUS"]["Secret_Key"]
+
 
     def get_indexes(self):
         return self.indexes
@@ -49,25 +56,18 @@ class Exporter:
     def construct_url(self, protocol, ip, port):
         return f"{protocol}://{ip}:{port}"
 
-    # need to find a better way of parsing the config to separate
-    # nonexclusive information from the Exporter class (i.e. ELK, MongoDB, SQL, whatever)
-    def parse_config(self):
-        config = configparser.ConfigParser()
-        config.read("../config/config.ini")
-        config.sections()
-        self.polling_interval = int(config["Exporter"]["Polling_Interval"])
-        nessus_url = self.construct_url(config["NESSUS"]["Protocol"],config["NESSUS"]["IP"],config["NESSUS"]["Port"])
-        elk_url = self.construct_url(config["ELK"]["Protocol"],config["ELK"]["IP"],config["ELK"]["Port"])
-        nessus_access_key = config["NESSUS"]["Access_Key"]
-        nessus_secret_key = config["NESSUS"]["Secret_Key"]
-        elk_auth = config["ELK"]["Auth"]
-        return nessus_url, elk_url, nessus_access_key, nessus_secret_key, elk_auth
 
 
 '''
 ELKImporter inherits from Exporter Class
 '''
 class ELKImporter(Exporter):
+    def __init__(self):
+        super().__init__() #call the super-class' constructor
+        # parse ELK related configuration
+        self.elk_url = self.construct_url(self.config["ELK"]["Protocol"],self.config["ELK"]["IP"],self.config["ELK"]["Port"])
+        self.elk_auth = self.config["ELK"]["Auth"]
+
     def mappings(self):
         return  """ {
                       "mappings": {
@@ -103,9 +103,8 @@ class ELKImporter(Exporter):
 
 if __name__ == "__main__":
     exporter = ELKImporter()
-    nessus_url, elk_url, nessus_access_key, nessus_secret_key, elk_auth = exporter.parse_config()
-    nessus = Nessus(nessus_access_key, nessus_secret_key, nessus_url)
-    elk = ELK(elk_url, elk_auth)
+    nessus = Nessus(exporter.nessus_access_key, exporter.nessus_secret_key, exporter.nessus_url)
+    elk = ELK(exporter.elk_url, exporter.elk_auth)
     while True:
         for scan in nessus.get_scans():
             if scan["name"] not in exporter.get_indexes():
