@@ -1,0 +1,13 @@
+[Unit]
+Description=Nessus Exporter Service
+After=network.target
+After=elasticsearch.service
+After=kibana.service
+After=nessusd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /etc/nessus-exporter/src/exporter.py
+
+[Install]
+WantedBy=multi-user.target

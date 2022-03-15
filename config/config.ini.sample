@@ -1,0 +1,17 @@
+[DEFAULT]
+
+[Exporter]
+Polling_Interval = 20
+
+[NESSUS]
+Protocol = https
+IP = 0.0.0.0
+Port = 8834
+Secret_Key = nessus_secret_key
+Access_Key = nessus_access_key
+
+[ELK]
+Protocol = https
+IP = 0.0.0.0
+Port = 9201
+Auth = Basic_Auth
