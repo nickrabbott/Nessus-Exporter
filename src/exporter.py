@@ -112,7 +112,7 @@ if __name__ == "__main__":
                 exporter.add_index(scan['name'], nessus.last_modification_date(scan["id"]))
                 created, existed = exporter.export_scan(scan)
                 print(f"{scan['name']}: Created: {created}. Unchanged: {existed}")
-            elif (scan["name"] in exporter.get_indexes()) and (nessus.last_modificacation_date(scan["id"]) != exporter.get_index_history(scan["name"]) ):
+            elif (scan["name"] in exporter.get_indexes()) and (nessus.last_modification_date(scan["id"]) != exporter.get_index_history(scan["name"]) ):
                 exporter.update_history(scan['name'], nessus.last_modificacation_date(scan["id"]))
                 created, existed = exporter.export_scan(scan)
                 print(f"{scan['name']}: Created: {created}. Unchanged: {existed}")

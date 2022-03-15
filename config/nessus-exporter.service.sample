@@ -6,10 +6,8 @@ After=kibana.service
 After=nessusd.service
 
 [Service]
-WorkingDirectory=/etc/nessus-exporter/src/
-User=nick
 Type=simple
-ExecStart=/usr/bin/python3 -u /etc/nessus-exporter/src/exporter.py
+ExecStart=/usr/bin/python3 /etc/nessus-exporter/src/exporter.py
 
 [Install]
 WantedBy=multi-user.target
