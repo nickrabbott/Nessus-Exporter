@@ -1,12 +1,9 @@
-from nessus import Nessus
-from elk import ELK
 from io import StringIO
 import hashlib
 import pandas
 import datetime
 import simplejson
 import configparser
-import time
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -17,13 +14,13 @@ class Exporter:
     def __init__(self):
         self.indexes = []
         self.index_history = {}
-        self.polling_interval = 43200 # default value 1 day, overriden by config.ini
         self.config = configparser.ConfigParser()
         self.config.read("../config/config.ini")
         self.config.sections()
         self.nessus_url = self.construct_url(self.config["NESSUS"]["Protocol"],self.config["NESSUS"]["IP"],self.config["NESSUS"]["Port"])
         self.nessus_access_key = self.config["NESSUS"]["Access_Key"]
         self.nessus_secret_key = self.config["NESSUS"]["Secret_Key"]
+        self.polling_interval = int(self.config["Exporter"]["Polling_Interval"])
 
 
     def get_indexes(self):
@@ -80,7 +77,7 @@ class ELKImporter(Exporter):
                       }
                     }"""
 
-    def export_scan(self, scan):
+    def export_scan(self, nessus, elk, scan):
         create_counter = 0
         exists_counter = 0
         data = self.download_to_dict(nessus.full_download(scan["id"]))
@@ -98,24 +95,3 @@ class ELKImporter(Exporter):
                 resp = elk.create_document(index, _id, json)
 
         return create_counter, exists_counter
-
-
-
-if __name__ == "__main__":
-    exporter = ELKImporter()
-    nessus = Nessus(exporter.nessus_access_key, exporter.nessus_secret_key, exporter.nessus_url)
-    elk = ELK(exporter.elk_url, exporter.elk_auth)
-    while True:
-        for scan in nessus.get_scans():
-            if scan["name"] not in exporter.get_indexes():
-                exporter.add_index(scan['name'], nessus.last_modification_date(scan["id"]))
-                created, existed = exporter.export_scan(scan)
-                print(f"{scan['name']}: Created: {created}. Unchanged: {existed}")
-            elif (scan["name"] in exporter.get_indexes()) and (nessus.last_modification_date(scan["id"]) != exporter.get_index_history(scan["name"]) ):
-                exporter.update_history(scan['name'], nessus.last_modificacation_date(scan["id"]))
-                created, existed = exporter.export_scan(scan)
-                print(f"{scan['name']}: Created: {created}. Unchanged: {existed}")
-            else:
-                print(f"{scan['name']} has no updates.")
-
-        time.sleep(exporter.polling_interval)
