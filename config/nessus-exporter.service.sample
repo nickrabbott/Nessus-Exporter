@@ -7,7 +7,7 @@ After=nessusd.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /etc/nessus-exporter/src/exporter.py
+ExecStart=/usr/bin/python3 -u /etc/nessus-exporter/src/nessusexporter.py
 
 [Install]
 WantedBy=multi-user.target
