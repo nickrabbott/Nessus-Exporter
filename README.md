@@ -68,6 +68,7 @@ sudo systemctl start nessus-exporter.service
 ```
 Check the status of the service
 ```bash
+sudo systemctl status nessus-exporter.service
 ● nessus-exporter.service - Nessus Exporter Service
    Loaded: loaded (/etc/nessus-exporter/config/nessus-exporter.service; linked; vendor preset: enabled)
    Active: active (running) since Wed 2022-03-16 00:41:01 UTC; 39min ago
