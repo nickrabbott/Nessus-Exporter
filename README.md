@@ -11,9 +11,9 @@ pip install pandas
 ```
 For systemd based systems, clone the repo under /etc
 ```bash
-git clone https://github.com/nickrabbott/elknessus.git
+git clone git@github.com:nickrabbott/Nessus-Exporter.git
 or
-git clone git@github.com:nickrabbott/elknessus.git
+git clone https://github.com/nickrabbott/Nessus-Exporter.git
 ```
 Fill in the appropriate values in /config/config.ini.
 ```ini
