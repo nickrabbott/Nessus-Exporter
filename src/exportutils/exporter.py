@@ -1,4 +1,5 @@
 from io import StringIO
+import requests
 import hashlib
 import pandas
 import datetime
@@ -21,6 +22,7 @@ class Exporter:
         self.nessus_access_key = self.config["NESSUS"]["Access_Key"]
         self.nessus_secret_key = self.config["NESSUS"]["Secret_Key"]
         self.polling_interval = int(self.config["Exporter"]["Polling_Interval"])
+        self.cisa_feed = requests.get("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json")
 
 
     def get_indexes(self):
@@ -53,6 +55,12 @@ class Exporter:
     def construct_url(self, protocol, ip, port):
         return f"{protocol}://{ip}:{port}"
 
+    # I don't want to store this information twice
+    def exploited_cves(self):
+        return [item["cveID"] for item in self.cisa_feed.json()["vulnerabilities"]]
+
+    def in_cisa_feed(self, cve):
+        return cve in self.exploited_cves()
 
 
 '''
@@ -91,6 +99,7 @@ class ELKImporter(Exporter):
             else:
                 create_counter += 1
                 row["date"] = self.create_timestamp()
+                row["in_cisa_feed"] = self.in_cisa_feed(row["CVE"])
                 json = simplejson.dumps(row,ignore_nan=True)
                 resp = elk.create_document(index, _id, json)
 
