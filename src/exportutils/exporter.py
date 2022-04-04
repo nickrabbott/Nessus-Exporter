@@ -1,7 +1,9 @@
+from functools import wraps
 from io import StringIO
 import requests
 import hashlib
 import pandas
+import pymongo
 import datetime
 import simplejson
 import configparser
@@ -29,7 +31,10 @@ class Exporter:
         return self.indexes
 
     def get_index_history(self, index):
-        return self.index_history[index]
+        try:
+            return self.index_history[index]
+        except KeyError:
+            return None
 
     def add_index(self, index, history):
         self.indexes.append(index)
@@ -63,15 +68,24 @@ class Exporter:
         return cve in self.exploited_cves()
 
     def benchmark(func):
+        """
+        A decorator that prints the time a function takes
+        to execute.
+        """
         import time
+
         def wrapper(*args, **kwargs):
             t1 = time.time()
-            created, existed = func(*args, **kwargs)
-            result = time.time() - t1
-            return result, created, existed
+            created, existed, size = func(*args, **kwargs)
+            t2 = time.time() - t1
+            results =(f"\n"
+            f"Time (secs): {t2}\n"
+            f"Size (bytes): {size}\n"
+            f"Speed: {size/t2}\n"
+            f"================================")
+            return results, created, existed, size
 
         return wrapper
-
 
 '''
 ELKImporter inherits from Exporter Class
@@ -82,6 +96,7 @@ class ELKImporter(Exporter):
         # parse ELK related configuration
         self.elk_url = self.construct_url(self.config["ELK"]["Protocol"],self.config["ELK"]["IP"],self.config["ELK"]["Port"])
         self.elk_auth = self.config["ELK"]["Auth"]
+        #self.elk = ELK(self.elk_url, self.elk_auth)
 
     def mappings(self):
         return  """ {
@@ -97,6 +112,7 @@ class ELKImporter(Exporter):
 
     @Exporter.benchmark
     def export_scan(self, nessus, elk, scan):
+        import sys
         create_counter = 0
         exists_counter = 0
         data = self.download_to_dict(nessus.full_download(scan["id"]))
@@ -112,6 +128,59 @@ class ELKImporter(Exporter):
                 row["date"] = self.create_timestamp()
                 row["in_cisa_feed"] = self.in_cisa_feed(row["CVE"])
                 json = simplejson.dumps(row,ignore_nan=True)
-                resp = elk.create_document(index, _id, json)
+                resp = self.elk.create_document(index, _id, json)
+
+
+        return create_counter, exists_counter, sys.getsizeof(data)
+
+
+'''
+MongoImporter inherits from Exporter Class
+'''
+class MongoImporter(Exporter):
+    def __init__(self):
+        super().__init__() #call the super-class' constructor
+        # parse Mongo related configuration
+        self.mongo_url = self.config["Mongo"]["URL"]
+        self.mongo_client = pymongo.MongoClient(self.mongo_url)
+        self.db = self.mongo_client["Nessus"]
+
+    def md5_digest(self, data):
+        return hashlib.md5(f"{data}".encode('utf-8')).hexdigest()
+
+    def document_exists(self, collection, _id):
+        insert = {}
+        insert["md5"] = _id
+        if self.db.get_collection(collection).find_one(insert) is None:
+            return False
+        else:
+            return True
+
+    def insert_document(self, collection, d):
+        return self.db.get_collection(collection).insert_one(d)
+
+    def insert_bulk(self, collection, data):
+        return self.db.get_collection(collection).insert_many(data)
+
+    @Exporter.benchmark
+    def export_scan(self, nessus, scan):
+        create_counter = 0
+        exists_counter = 0
+        data = self.download_to_dict(nessus.full_download(scan["id"]))
+        scan_name = scan["name"].replace(" ", "_").lower()
+        collection = f"nessus_{scan_name}"
+        for row in data:
+            _id = self.md5_digest(row)
+            if self.document_exists(collection, _id):
+                exists_counter += 1
+            else:
+                create_counter += 1
+                row["md5"] = _id
+                row["date"] = self.create_timestamp()
+                row["in_cisa_feed"] = self.in_cisa_feed(row["CVE"])
+                resp = self.insert_document(collection, row)
+
+            #resp = self.insert_bulk(collection, data)
+
 
         return create_counter, exists_counter
