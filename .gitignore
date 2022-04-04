@@ -4,3 +4,4 @@ __pycache__/
 *.ini
 *.txt
 *.service
+*test.py
