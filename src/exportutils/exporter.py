@@ -62,6 +62,16 @@ class Exporter:
     def in_cisa_feed(self, cve):
         return cve in self.exploited_cves()
 
+    def benchmark(func):
+        import time
+        def wrapper(*args, **kwargs):
+            t1 = time.time()
+            created, existed = func(*args, **kwargs)
+            result = time.time() - t1
+            return result, created, existed
+
+        return wrapper
+
 
 '''
 ELKImporter inherits from Exporter Class
@@ -85,6 +95,7 @@ class ELKImporter(Exporter):
                       }
                     }"""
 
+    @Exporter.benchmark
     def export_scan(self, nessus, elk, scan):
         create_counter = 0
         exists_counter = 0
