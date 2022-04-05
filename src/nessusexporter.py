@@ -8,12 +8,14 @@ elk = ELK(exporter.elk_url, exporter.elk_auth)
 
 
 def process_scan(scan):
+    nessus_lmd = nessus.last_modification_date(scan["id"])
+    exporter_lmd = exporter.get_index_history(scan["name"])
     if scan["name"] not in exporter.get_indexes():
-        exporter.add_index(scan['name'], nessus.last_modification_date(scan["id"]))
+        exporter.add_index(scan['name'], nessus_lmd)
         benchmark, created, existed = exporter.export_scan(nessus, elk, scan)
         print(f"{scan['name']}: Created: {created}. Unchanged: {existed}. Time: {benchmark}")
-    elif (scan["name"] in exporter.get_indexes()) and (nessus.last_modification_date(scan["id"]) != exporter.get_index_history(scan["name"]) ):
-        exporter.update_history(scan['name'], nessus.last_modificacation_date(scan["id"]))
+    elif (scan["name"] in exporter.get_indexes()) and (nessus_lmd != exporter_lmd ):
+        exporter.update_history(scan['name'], nessus_lmd)
         created, existed = exporter.export_scan(nessus, elk, scan)
         print(f"{scan['name']}: Created: {created}. Unchanged: {existed}. Time: {benchmark}")
     else:

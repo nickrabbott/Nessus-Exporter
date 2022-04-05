@@ -1,4 +1,4 @@
-from functools import wraps
+#from functools import wraps
 from io import StringIO
 import requests
 import hashlib
@@ -73,7 +73,7 @@ class Exporter:
         to execute.
         """
         import time
-
+        #@wraps(func)
         def wrapper(*args, **kwargs):
             t1 = time.time()
             created, existed, size = func(*args, **kwargs)
