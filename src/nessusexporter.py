@@ -12,20 +12,23 @@ def process_scan(scan):
     exporter_lmd = exporter.get_index_history(scan["name"])
     if scan["name"] not in exporter.get_indexes():
         exporter.add_index(scan['name'], nessus_lmd)
-        benchmark, created, existed = exporter.export_scan(nessus, elk, scan)
+        created, existed, benchmark = exporter.export_scan(nessus, elk, scan)
         print(f"{scan['name']}: Created: {created}. Unchanged: {existed}. Time: {benchmark}")
-    elif (scan["name"] in exporter.get_indexes()) and (nessus_lmd != exporter_lmd ):
+    elif (scan["name"] in exporter.get_indexes()) and (nessus_lmd != exporter_lmd):
         exporter.update_history(scan['name'], nessus_lmd)
-        created, existed = exporter.export_scan(nessus, elk, scan)
+        created, existed, benchmark = exporter.export_scan(nessus, elk, scan)
         print(f"{scan['name']}: Created: {created}. Unchanged: {existed}. Time: {benchmark}")
     else:
         print(f"{scan['name']} has no updates.")
 
 
-
 if __name__ == "__main__":
     while True:
         t1 = time.time()
+        # single thread:
+        # for scan in nessus.get_scans():
+        #     process_scan(scan)
+        #     break
         with concurrent.futures.ThreadPoolExecutor() as executor:
             executor.map(process_scan, nessus.get_scans())
 

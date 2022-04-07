@@ -1,4 +1,4 @@
-#from functools import wraps
+from functools import wraps
 from io import StringIO
 import requests
 import hashlib
@@ -13,6 +13,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 '''
 The Exporter class stores the state and history of exports
 '''
+
+
 class Exporter:
     def __init__(self):
         self.indexes = []
@@ -20,12 +22,13 @@ class Exporter:
         self.config = configparser.ConfigParser()
         self.config.read("../config/config.ini")
         self.config.sections()
-        self.nessus_url = self.construct_url(self.config["NESSUS"]["Protocol"],self.config["NESSUS"]["IP"],self.config["NESSUS"]["Port"])
+        self.nessus_url = self.construct_url(
+            self.config["NESSUS"]["Protocol"], self.config["NESSUS"]["IP"], self.config["NESSUS"]["Port"])
         self.nessus_access_key = self.config["NESSUS"]["Access_Key"]
         self.nessus_secret_key = self.config["NESSUS"]["Secret_Key"]
         self.polling_interval = int(self.config["Exporter"]["Polling_Interval"])
-        self.cisa_feed = requests.get("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json")
-
+        self.cisa_feed = requests.get(
+            "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json").json()
 
     def get_indexes(self):
         return self.indexes
@@ -45,7 +48,7 @@ class Exporter:
 
     # accepts dictionary, converts to string, returns MD5 hash as integer
     def md5_hash(self, data):
-        return int(hashlib.md5("{}".format(data).encode('utf-8')).hexdigest(),16)
+        return int(hashlib.md5("{}".format(data).encode('utf-8')).hexdigest(), 16)
 
     # time in seconds since unix epoch
     def create_timestamp(self):
@@ -53,16 +56,16 @@ class Exporter:
 
     # converts csv download (in bytes) to dictionary
     def download_to_dict(self, download):
-        StringIO_data = StringIO(str(download.content,'utf-8'))
+        StringIO_data = StringIO(str(download.content, 'utf-8'))
         data_frame = pandas.read_csv(StringIO_data)
-        return data_frame.to_dict(orient = "records")
+        return data_frame.to_dict(orient="records")
 
     def construct_url(self, protocol, ip, port):
         return f"{protocol}://{ip}:{port}"
 
     # I don't want to store this information twice
     def exploited_cves(self):
-        return [item["cveID"] for item in self.cisa_feed.json()["vulnerabilities"]]
+        return [item["cveID"] for item in self.cisa_feed["vulnerabilities"]]
 
     def in_cisa_feed(self, cve):
         return cve in self.exploited_cves()
@@ -73,33 +76,32 @@ class Exporter:
         to execute.
         """
         import time
-        #@wraps(func)
+        @wraps(func)
         def wrapper(*args, **kwargs):
             t1 = time.time()
-            created, existed, size = func(*args, **kwargs)
+            created, existed = func(*args, **kwargs)
             t2 = time.time() - t1
-            results =(f"\n"
-            f"Time (secs): {t2}\n"
-            f"Size (bytes): {size}\n"
-            f"Speed: {size/t2}\n"
-            f"================================")
-            return results, created, existed, size
+            return created, existed, t2
 
         return wrapper
+
 
 '''
 ELKImporter inherits from Exporter Class
 '''
+
+
 class ELKImporter(Exporter):
     def __init__(self):
-        super().__init__() #call the super-class' constructor
+        super().__init__()  # call the super-class' constructor
         # parse ELK related configuration
-        self.elk_url = self.construct_url(self.config["ELK"]["Protocol"],self.config["ELK"]["IP"],self.config["ELK"]["Port"])
+        self.elk_url = self.construct_url(
+            self.config["ELK"]["Protocol"], self.config["ELK"]["IP"], self.config["ELK"]["Port"])
         self.elk_auth = self.config["ELK"]["Auth"]
         #self.elk = ELK(self.elk_url, self.elk_auth)
 
     def mappings(self):
-        return  """ {
+        return """ {
                       "mappings": {
                         "properties": {
                           "date": {
@@ -112,7 +114,6 @@ class ELKImporter(Exporter):
 
     @Exporter.benchmark
     def export_scan(self, nessus, elk, scan):
-        import sys
         create_counter = 0
         exists_counter = 0
         data = self.download_to_dict(nessus.full_download(scan["id"]))
@@ -127,19 +128,20 @@ class ELKImporter(Exporter):
                 create_counter += 1
                 row["date"] = self.create_timestamp()
                 row["in_cisa_feed"] = self.in_cisa_feed(row["CVE"])
-                json = simplejson.dumps(row,ignore_nan=True)
-                resp = self.elk.create_document(index, _id, json)
+                json = simplejson.dumps(row, ignore_nan=True)
+                resp = elk.create_document(index, _id, json)
 
-
-        return create_counter, exists_counter, sys.getsizeof(data)
+        return create_counter, exists_counter
 
 
 '''
 MongoImporter inherits from Exporter Class
 '''
+
+
 class MongoImporter(Exporter):
     def __init__(self):
-        super().__init__() #call the super-class' constructor
+        super().__init__()  # call the super-class' constructor
         # parse Mongo related configuration
         self.mongo_url = self.config["Mongo"]["URL"]
         self.mongo_client = pymongo.MongoClient(self.mongo_url)
@@ -181,6 +183,5 @@ class MongoImporter(Exporter):
                 resp = self.insert_document(collection, row)
 
             #resp = self.insert_bulk(collection, data)
-
 
         return create_counter, exists_counter

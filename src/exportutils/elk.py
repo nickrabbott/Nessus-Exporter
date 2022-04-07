@@ -1,5 +1,6 @@
 import requests
 
+
 class ELK:
     def __init__(self, url, auth):
         self.url = url
@@ -9,7 +10,7 @@ class ELK:
         }
 
     def set_mappings(self, index, json_datatypes):
-        return requests.put(f'{self.url}/{index}', headers=self.headers, data = json_datatypes, verify=False).json()
+        return requests.put(f'{self.url}/{index}', headers=self.headers, data=json_datatypes, verify=False).json()
 
     def document_exists(self, index, _id):
         uri = f'{self.url}/{index}/_doc/{_id}'

@@ -1,13 +1,14 @@
 import requests
 import time
 
+
 class Nessus:
     def __init__(self, access_key, secret_key, url):
         self.access_key = access_key
         self.secret_key = secret_key
         self.headers = {'accept': 'application/json',
-                    'x-apikeys': f"accessKey={self.access_key};secretKey={self.secret_key}"
-    	}
+                        'x-apikeys': f"accessKey={self.access_key};secretKey={self.secret_key}"
+                        }
         self.url = url
         self.scan_data = '{"format":"csv","template_id":"","reportContents":{"csvColumns":{"id":true,"cve":true,"cvss":true,"risk":true,"hostname":true,"protocol":true,"port":true,"plugin_name":true,"synopsis":true,"description":true,"solution":true,"see_also":true,"plugin_output":true,"stig_severity":false,"cvss3_base_score":false,"cvss_temporal_score":false,"cvss3_temporal_score":false,"risk_factor":false,"references":false,"plugin_information":false,"exploitable_with":false}},"extraFilters":{"host_ids":[],"plugin_ids":[]}}'
 
