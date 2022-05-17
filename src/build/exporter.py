@@ -14,7 +14,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 '''
 The Exporter class stores the state and history of exports
 
-Base class stores polling and Nessus connection/auth information
 '''
 
 
