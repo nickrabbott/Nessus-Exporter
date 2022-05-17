@@ -11,7 +11,10 @@ def validate_ip(address):
             print("IPv6 not currently supported")
             return False
     except ValueError:
-        return False
+        if address == "localhost":
+            return True
+        else:
+            return False
 
 
 def validate_port(port):
@@ -79,7 +82,6 @@ class Config:
         access_key = self.nessus_config.get("access_key", False)
         secret_key = self.nessus_config.get("secret_key", False)
 
-        print(f"Protocol: {protocol}. IP: {ip}. Port: {port}. AK: {access_key}. SK: {secret_key}.")
         return (protocol and ip and port and access_key and secret_key)
 
     '''
