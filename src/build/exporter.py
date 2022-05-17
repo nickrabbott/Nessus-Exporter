@@ -1,3 +1,4 @@
+from apis import *
 from functools import wraps
 from io import StringIO
 import requests
@@ -12,23 +13,19 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 '''
 The Exporter class stores the state and history of exports
+
+Base class stores polling and Nessus connection/auth information
 '''
 
 
 class Exporter:
-    def __init__(self):
+    def __init__(self, exporter_config):
         self.indexes = []
         self.index_history = {}
-        self.config = configparser.ConfigParser()
-        self.config.read("../config/config.ini")
-        self.config.sections()
-        self.nessus_url = self.construct_url(
-            self.config["NESSUS"]["Protocol"], self.config["NESSUS"]["IP"], self.config["NESSUS"]["Port"])
-        self.nessus_access_key = self.config["NESSUS"]["Access_Key"]
-        self.nessus_secret_key = self.config["NESSUS"]["Secret_Key"]
-        self.polling_interval = int(self.config["Exporter"]["Polling_Interval"])
+        self.polling_interval = int(exporter_config.get("polling_interval"))
         self.cisa_feed = requests.get(
             "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json").json()
+
 
     def get_indexes(self):
         return self.indexes
@@ -63,7 +60,6 @@ class Exporter:
     def construct_url(self, protocol, ip, port):
         return f"{protocol}://{ip}:{port}"
 
-    # I don't want to store this information twice
     def exploited_cves(self):
         return [item["cveID"] for item in self.cisa_feed["vulnerabilities"]]
 
@@ -92,13 +88,11 @@ ELKImporter inherits from Exporter Class
 
 
 class ELKImporter(Exporter):
-    def __init__(self):
-        super().__init__()  # call the super-class' constructor
-        # parse ELK related configuration
-        self.elk_url = self.construct_url(
-            self.config["ELK"]["Protocol"], self.config["ELK"]["IP"], self.config["ELK"]["Port"])
-        self.elk_auth = self.config["ELK"]["Auth"]
-        #self.elk = ELK(self.elk_url, self.elk_auth)
+    def __init__(self, elk_config, **kwargs):
+        super().__init__(kwargs["exporter_config"])  # call the super-class' constructor
+        self.elk_url = self.construct_url(elk_config.get("protocol"), elk_config.get("ip"), elk_config.get("port"))
+        self.elk_auth = elk_config.get("auth")
+        self.elk = ELK(self.elk_url, self.elk_auth)
 
     def mappings(self):
         return """ {
@@ -113,23 +107,23 @@ class ELKImporter(Exporter):
                     }"""
 
     @Exporter.benchmark
-    def export_scan(self, nessus, elk, scan):
+    def export_scan(self, nessus, scan):
         create_counter = 0
         exists_counter = 0
         data = self.download_to_dict(nessus.full_download(scan["id"]))
         scan_name = scan["name"].replace(" ", "_").lower()
         index = f"nessus_{scan_name}"
-        resp = elk.set_mappings(index, self.mappings())
+        resp = self.elk.set_mappings(index, self.mappings())
         for row in data:
             _id = self.md5_hash(row)
-            if elk.document_exists(index, _id):
+            if self.elk.document_exists(index, _id):
                 exists_counter += 1
             else:
                 create_counter += 1
                 row["date"] = self.create_timestamp()
                 row["in_cisa_feed"] = self.in_cisa_feed(row["CVE"])
                 json = simplejson.dumps(row, ignore_nan=True)
-                resp = elk.create_document(index, _id, json)
+                resp = self.elk.create_document(index, _id, json)
 
         return create_counter, exists_counter
 
@@ -140,10 +134,9 @@ MongoImporter inherits from Exporter Class
 
 
 class MongoImporter(Exporter):
-    def __init__(self):
-        super().__init__()  # call the super-class' constructor
-        # parse Mongo related configuration
-        self.mongo_url = self.config["Mongo"]["URL"]
+    def __init__(self, mongo_config, **kwargs):
+        super().__init__(kwargs["exporter_config"])  # call the super-class' constructor
+        self.mongo_url = mongo_config.get("url")
         self.mongo_client = pymongo.MongoClient(self.mongo_url)
         self.db = self.mongo_client["Nessus"]
 

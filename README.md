@@ -1,6 +1,6 @@
 # Nessus Exporter
 
-Nessus Exporter is a automation tool in Python that automates the export of [Nessus Vulnerability Scans](https://www.tenable.com/) to be imported into an Analytics Platform. Currently, this works with [Elastic Search](https://www.elastic.co/), but I intend to extend the functionality with [MongoDB](https://www.mongodb.com/) as I've done in another one of my repos: [MongoNessus](https://github.com/nickrabbott/mongonessus).
+Nessus Exporter is an automation tool in Python that automates the export of [Nessus Vulnerability Scans](https://www.tenable.com/) to be imported into an Analytics Platform. Currently, this works with [Elastic Search](https://www.elastic.co/) and [MongoDB Atlas](https://www.mongodb.com/atlas/database), but I may extend functionality with other NoSQL platforms such as [Splunk](https://www.splunk.com/) or [DynamoDB](https://aws.amazon.com/dynamodb/).
 
 ## Installation
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the following packages.
@@ -15,12 +15,12 @@ git clone git@github.com:nickrabbott/Nessus-Exporter.git
 or
 git clone https://github.com/nickrabbott/Nessus-Exporter.git
 ```
-Fill in the appropriate values in /config/config.ini.
+Fill in the appropriate values in /config/config.ini. Polling_Interval is in seconds.
 ```ini
 [DEFAULT]
 
 [Exporter]
-Polling_Interval = 20
+Polling_Interval = 86400
 
 [NESSUS]
 Protocol = https
@@ -34,6 +34,9 @@ Protocol = https
 IP = 0.0.0.0
 Port = 9201
 Auth = Basic_Auth
+
+[Mongo]
+URL = "mongodb atlas url"
 ```
 Modify the systemd unit file under /config to store the appropriate values and remove the .sample extension.
 ```ini
